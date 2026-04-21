@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>K22 Catch Part Game</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --card: #171b22;
+      --card-2: #1d2330;
+      --text: #f5f7fb;
+      --muted: #a6b0c2;
+      --red: #d72d2d;
+      --red-2: #b31f1f;
+      --line: rgba(255,255,255,.08);
+      --green: #26c281;
+      --yellow: #f4c542;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: Inter, Arial, sans-serif;
+      background: radial-gradient(circle at top, #1a2130 0%, #0f1115 58%);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      padding: 18px;
+    }
+    .app {
+      width: min(100%, 460px);
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,.015));
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 16px;
+      box-shadow: 0 18px 40px rgba(0,0,0,.24);
+    }
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .logo {
+      width: 54px;
+      height: 54px;
+      border-radius: 14px;
+      object-fit: cover;
+      background: #222;
+      border: 1px solid var(--line);
+    }
+    .title { font-size: 24px; font-weight: 800; line-height: 1.05; }
+    .subtitle { color: var(--muted); font-size: 14px; margin-top: 4px; }
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+    }
+    .stat {
+      background: var(--card-2);
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 10px 12px;
+      text-align: center;
+    }
+    .stat span { display: block; font-size: 12px; color: var(--muted); }
+    .stat strong { display: block; font-size: 22px; margin-top: 4px; }
+    .game-wrap {
+      position: relative;
+      background: linear-gradient(180deg, #1d2430 0%, #151a22 100%);
+      border: 1px solid var(--line);
+      border-radius: 24px;
+      overflow: hidden;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: auto;
+      touch-action: none;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.03) 0%, rgba(255,255,255,.01) 100%),
+        radial-gradient(circle at 50% -10%, rgba(255,255,255,.08), rgba(255,255,255,0) 42%);
+    }
+    .overlay {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 18px;
+      background: linear-gradient(180deg, rgba(9,11,15,.22), rgba(9,11,15,.78));
+      z-index: 5;
+    }
+    .overlay.hidden { display: none; }
+    .panel {
+      width: 100%;
+      background: rgba(17,20,27,.92);
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      padding: 18px;
+      text-align: center;
+      backdrop-filter: blur(10px);
+    }
+    .panel h2 { margin: 0 0 8px; font-size: 24px; }
+    .panel p { margin: 0 0 14px; color: var(--muted); font-size: 14px; line-height: 1.5; }
+    .btnrow { display: flex; gap: 10px; flex-direction: column; }
+    .btn {
+      border: none;
+      border-radius: 16px;
+      min-height: 48px;
+      padding: 0 16px;
+      font-size: 15px;
+      font-weight: 800;
+      cursor: pointer;
+      width: 100%;
+    }
+    .btn-primary { background: linear-gradient(180deg, var(--red), var(--red-2)); color: white; }
+    .btn-secondary { background: #222b39; color: white; border: 1px solid var(--line); }
+    .controls { display: flex; justify-content: center; }
+    .controls .btn { max-width: 260px; }
+    .rules { font-size: 14px; color: var(--muted); }
+    .rules ul { margin: 10px 0 0; padding-left: 18px; }
+    .rules li + li { margin-top: 8px; }
+    .promo { color: #fff; font-size: 26px; font-weight: 900; letter-spacing: .06em; margin: 10px 0; }
+    .contact { color: var(--muted); font-size: 14px; line-height: 1.55; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="card">
+      <div class="topbar">
+        <img class="logo" src="./assets/k22-logo.jpg" alt="K22 logo" />
+        <div>
+          <div class="title">Лови детали — получай скидку</div>
+          <div class="subtitle">Управляй корзиной, собирай полезные элементы для своего авто и избегай поломки двигателя и лишения прав. Раунд длится 60 секунд, после чего ты увидишь результат и сможешь получить скидку на услугу!</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="stats">
+        <div class="stat"><span>Очки</span><strong id="scoreValue">0</strong></div>
+        <div class="stat"><span>Жизни</span><strong id="livesValue">3</strong></div>
+        <div class="stat"><span>Время</span><strong id="timeValue">60</strong></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="game-wrap">
+        <canvas id="gameCanvas" width="420" height="620"></canvas>
+        <div class="overlay" id="startOverlay">
+          <div class="panel">
+            <h2>Начни игру</h2>
+            <p>Собери турбину и глушитель, избегай чек энджин и лишения прав.</p>
+            <div class="btnrow">
+              <button class="btn btn-primary" id="startBtn" type="button">Начать игру</button>
+            </div>
+          </div>
+        </div>
+        <div class="overlay hidden" id="resultOverlay">
+          <div class="panel">
+            <h2 id="resultTitle">Раунд окончен</h2>
+            <p id="resultText">Ты набрал 0 очков.</p>
+            <div class="promo" id="promoCode">GAME22</div>
+            <div class="contact">Промокод GAME22 даёт 15% скидку для новичков.<br><br>K22 PowerTeam<br>Телефон: 8(921)401-98-98<br>Telegram: @k22_power_team_spb</div>
+            <div class="btnrow" style="margin-top:14px;">
+              <button class="btn btn-primary" id="restartBtn" type="button">Играть снова</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="controls" style="margin-top:12px;">
+        <button class="btn btn-primary" id="finishBtn" type="button">Закончить игру</button>
+      </div>
+    </section>
+
+    <section class="card rules">
+      Чек энджин и лишение прав дают штраф и уменьшают запас жизни.
+      <ul>
+        <li>Турбина: +8 очков</li>
+        <li>Глушитель: +6 очков</li>
+        <li>Чек энджин: −8 очков и −1 жизнь</li>
+        <li>Лишение прав: −10 очков и −1 жизнь</li>
+      </ul>
+    </section>
+  </div>
+
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+    if (tg) { tg.ready(); tg.expand(); }
+
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const startOverlay = document.getElementById('startOverlay');
+    const resultOverlay = document.getElementById('resultOverlay');
+    const scoreValue = document.getElementById('scoreValue');
+    const livesValue = document.getElementById('livesValue');
+    const timeValue = document.getElementById('timeValue');
+    const resultText = document.getElementById('resultText');
+
+    const imgs = {
+      turbo: new Image(),
+      muffler: new Image(),
+      engine: new Image(),
+      police: new Image(),
+      trunk: new Image(),
+    };
+    imgs.turbo.src = './assets/Garret.jpg';
+    imgs.muffler.src = './assets/Exhaust.jpg';
+    imgs.engine.src = './assets/check_engine.jpg';
+    imgs.police.src = './assets/police.jpg';
+    imgs.trunk.src = './assets/Trunk.jpg';
+
+    const state = {
+      running: false,
+      score: 0,
+      lives: 3,
+      timeLeft: 60,
+      basketX: canvas.width / 2,
+      items: [],
+      lastTime: 0,
+      spawnTimer: 0,
+      timeTimer: 0,
+      caught: 0,
+    };
+
+    const ITEM_TYPES = [
+      { type: 'turbo', label: 'Турбина', points: 8, good: true, color: '#22c55e', symbol: 'T' },
+      { type: 'muffler', label: 'Глушитель', points: 6, good: true, color: '#0ea5e9', symbol: 'Г' },
+      { type: 'engine', label: 'Замена мотора', points: -8, good: false, color: '#f59e0b', symbol: '!' },
+      { type: 'police', label: 'Лишение прав', points: -10, good: false, color: '#2563eb', symbol: '👮' },
+    ];
+
+    function resetGame() {
+      state.running = false;
+      state.score = 0;
+      state.lives = 3;
+      state.timeLeft = 60;
+      state.basketX = canvas.width / 2;
+      state.items = [];
+      state.lastTime = 0;
+      state.spawnTimer = 0;
+      state.timeTimer = 0;
+      state.caught = 0;
+      updateHud();
+      draw();
+    }
+
+    function updateHud() {
+      scoreValue.textContent = String(state.score);
+      livesValue.textContent = String(state.lives);
+      timeValue.textContent = String(state.timeLeft);
+    }
+
+    function startGame() {
+      resetGame();
+      state.running = true;
+      startOverlay.classList.add('hidden');
+      resultOverlay.classList.add('hidden');
+    }
+
+    function finishGame() {
+      state.running = false;
+      resultText.textContent = 'Ты набрал ' + state.score + ' очков и поймал ' + state.caught + ' деталей.';
+      resultOverlay.classList.remove('hidden');
+      if (tg && typeof tg.sendData === 'function') {
+        try {
+          tg.sendData(JSON.stringify({ score: state.score, caught: state.caught, promo: 'GAME22' }));
+        } catch (e) {}
+      }
+    }
+
+    function basketRect() {
+      return { x: state.basketX - 58, y: canvas.height - 88, w: 116, h: 54 };
+    }
+
+    function spawnItem() {
+      const base = ITEM_TYPES[Math.floor(Math.random() * ITEM_TYPES.length)];
+      state.items.push({
+        ...base,
+        x: 34 + Math.random() * (canvas.width - 68),
+        y: -30,
+        r: 26,
+        speed: 150 + Math.random() * 140,
+      });
+    }
+
+    function intersectCircleRect(cx, cy, r, rect) {
+      const nearestX = Math.max(rect.x, Math.min(cx, rect.x + rect.w));
+      const nearestY = Math.max(rect.y, Math.min(cy, rect.y + rect.h));
+      const dx = cx - nearestX;
+      const dy = cy - nearestY;
+      return dx * dx + dy * dy <= r * r;
+    }
+
+    function update(dt) {
+      state.spawnTimer += dt;
+      state.timeTimer += dt;
+      if (state.spawnTimer >= 0.72) {
+        spawnItem();
+        state.spawnTimer = 0;
+      }
+      if (state.timeTimer >= 1) {
+        state.timeLeft -= 1;
+        state.timeTimer = 0;
+        if (state.timeLeft <= 0) {
+          state.timeLeft = 0;
+          updateHud();
+          finishGame();
+          return;
+        }
+      }
+      const basket = basketRect();
+      const alive = [];
+      for (const item of state.items) {
+        item.y += item.speed * dt;
+        if (intersectCircleRect(item.x, item.y, item.r, basket)) {
+          state.score += item.points;
+          state.caught += 1;
+          if (!item.good) state.lives -= 1;
+          if (state.score < 0) state.score = 0;
+          if (state.lives <= 0) {
+            state.lives = 0;
+            updateHud();
+            finishGame();
+            return;
+          }
+          continue;
+        }
+        if (item.y < canvas.height + 40) alive.push(item);
+      }
+      state.items = alive;
+      updateHud();
+    }
+
+    function drawBackground() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = '#18202b';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = 'rgba(255,255,255,.05)';
+      for (let i = 1; i < 8; i++) {
+        const y = i * (canvas.height / 8);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(canvas.width, y);
+        ctx.stroke();
+      }
+    }
+
+    function drawBasket() {
+      const rect = basketRect();
+      const img = imgs.trunk;
+      if (img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, rect.x - 18, rect.y - 14, rect.w + 36, 84);
+      } else {
+        ctx.fillStyle = '#c81f1f';
+        ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      }
+    }
+
+    function drawItem(item) {
+      let img = null;
+      if (item.type === 'turbo') img = imgs.turbo;
+      if (item.type === 'muffler') img = imgs.muffler;
+      if (item.type === 'engine') img = imgs.engine;
+      if (item.type === 'police') img = imgs.police;
+      if (img && img.complete && img.naturalWidth > 0) {
+        ctx.drawImage(img, item.x - item.r, item.y - item.r, item.r * 2, item.r * 2);
+      } else {
+        ctx.fillStyle = item.color;
+        ctx.beginPath();
+        ctx.arc(item.x, item.y, item.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 20px Inter';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(item.symbol, item.x, item.y + 1);
+      }
+    }
+
+    function draw() {
+      drawBackground();
+      for (const item of state.items) drawItem(item);
+      drawBasket();
+    }
+
+    function loop(ts) {
+      if (!state.lastTime) state.lastTime = ts;
+      const dt = Math.min((ts - state.lastTime) / 1000, 0.033);
+      state.lastTime = ts;
+      if (state.running) update(dt);
+      draw();
+      requestAnimationFrame(loop);
+    }
+
+    function setBasket(clientX) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const x = (clientX - rect.left) * scaleX;
+      state.basketX = Math.max(64, Math.min(canvas.width - 64, x));
+    }
+
+    canvas.addEventListener('pointerdown', function(e) { setBasket(e.clientX); });
+    canvas.addEventListener('pointermove', function(e) { if (e.buttons !== 1) return; setBasket(e.clientX); });
+    canvas.addEventListener('touchstart', function(e) { if (e.touches[0]) setBasket(e.touches[0].clientX); }, { passive: true });
+    canvas.addEventListener('touchmove', function(e) { if (e.touches[0]) setBasket(e.touches[0].clientX); }, { passive: true });
+
+    document.getElementById('startBtn').addEventListener('click', startGame);
+    document.getElementById('restartBtn').addEventListener('click', startGame);
+    document.getElementById('finishBtn').addEventListener('click', function() {
+      if (state.running) finishGame();
+    });
+
+    resetGame();
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
